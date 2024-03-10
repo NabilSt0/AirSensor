@@ -1,7 +1,7 @@
 pandas
 snowflake-connector-python
 plotly
-openai
+openai==0.28.0
 scikit-learn==1.2.1
 streamlit==1.32.0
 streamlit_option_menu==0.3.0
