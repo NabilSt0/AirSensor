@@ -5,7 +5,7 @@ import os
 import pickle
 import openai
 
-openai.api_key = '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'
+openai.api_key = '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'
 
 # Fonction principale pour la page de calcul de la qualité de l'air
 def page_calcul_qualite_air():
