@@ -69,6 +69,6 @@ def page_donnees_temps_reel():
             fig = px.line(df.sort_values('TIMESTAMP'), x='TIMESTAMP', y=column, title=f'Évolution de {column}')
             graph_placeholders[column].plotly_chart(fig)
 
-        time.sleep(10)  # Mise à jour toutes les 10 secondes pour réduire la charge
+        time.sleep(1)  # Mise à jour toutes les 1 secondes pour réduire la charge
         if not st.session_state.updating:
             break

@@ -3,6 +3,9 @@ import pandas as pd
 import snowflake.connector
 import os
 import pickle
+import openai
+
+openai.api_key = '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'
 
 # Fonction principale pour la page de calcul de la qualité de l'air
 def page_calcul_qualite_air():
@@ -51,7 +54,7 @@ def page_calcul_qualite_air():
             TEMPERATURE_C      
         FROM SENSORREADINGS
         ORDER BY TIMESTAMP DESC
-        LIMIT 111
+        LIMIT 180
         """
         cur.execute(query)
         df = pd.DataFrame(cur.fetchall(), columns=[x[0] for x in cur.description])
@@ -75,6 +78,45 @@ def page_calcul_qualite_air():
             'lasso': prediction_lasso
         }
 
+    def interaction_chatsensor():
+        moyennes = calculer_moyennes(st.session_state.df)
+        texte_explicatif = generer_texte_explicatif(*moyennes)
+        return texte_explicatif
+
+    def calculer_moyennes(df):
+        tvoc_moyenne = df['TVOC_PPB'].mean()
+        eco2_moyenne = df['ECO2_PPM'].mean()
+        humidity_moyenne = df['RELATIVEHUMIDITY_PERCENT'].mean()
+        pressure_moyenne = df['PRESSURE_PA'].mean()
+        temperature_moyenne = df['TEMPERATURE_C'].mean()
+        return tvoc_moyenne, eco2_moyenne, humidity_moyenne, pressure_moyenne, temperature_moyenne
+
+    def generer_texte_explicatif(tvoc_moyenne, eco2_moyenne, humidity_moyenne, pressure_moyenne, temperature_moyenne):
+        prompt = f"""
+        TVOC (Total Volatile Organic Compounds) en PPB : {tvoc_moyenne},
+        eCO2 (Equivalent CO2) en PPM : {eco2_moyenne},
+        Humidité Relative en Pourcentage : {humidity_moyenne},
+        Pression en PA : {pressure_moyenne},
+        Température en °C : {temperature_moyenne}.
+        dis la valeure moyenne de chaque metrique et en quoi chaque métrique inflence la qualite de l air et proposez un indice de qualité de l'air (entre 1 et 5) pour chaque valeur et enfin donne moi une vue global de la qualite de lair.
+        """
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Vous êtes un assistant intelligent qui fournit la qualité de l'air intérieur basées sur des données spécifiques."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=1000,
+            top_p=1.0,
+            frequency_penalty=0.0,
+            presence_penalty=0.0
+        )
+        if response['choices']:
+            return response['choices'][0]['message']['content']
+        else:
+            return "Désolé, je ne peux pas générer de réponse en ce moment."
+
     # Interface Streamlit pour la page de calcul de la qualité de l'air
     st.title('Visualisation et prédiction de la qualité de l’air')
 
@@ -95,6 +137,10 @@ def page_calcul_qualite_air():
         st.write(f"Régression Linéaire: {st.session_state.model_predictions['linear']:.2f}")
         st.write(f"Régression Ridge: {st.session_state.model_predictions['ridge']:.2f}")
         st.write(f"Régression Lasso: {st.session_state.model_predictions['lasso']:.2f}")
+
+        # Ajout de l'appel à la fonction interaction_chatsensor ici
+        texte_explicatif = interaction_chatsensor()
+        st.markdown(f"### Explication sur la Qualité de l'Air\n{texte_explicatif}", unsafe_allow_html=True)
 
     if st.button('Retest'):
         st.session_state.data_fetched = False
